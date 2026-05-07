@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
+import { useData } from 'vitepress'
 import toolsData from '../../data/mcp-tools.json'
 import {
   Accordion,
@@ -7,6 +8,8 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from './ui/accordion'
+
+// ── Type definitions ──────────────────────────────────────────────────────────
 
 interface SchemaProperty {
   type: string | string[]
@@ -25,13 +28,106 @@ interface ToolSchema {
 
 interface Tool {
   name: string
+  title: string
   description: string
   inputSchema?: ToolSchema
+  annotations?: Record<string, unknown>
 }
 
-interface ToolsPayload {
-  tools: Tool[]
+interface ScopeDef {
+  id: string
+  name: string
+  description: string
+  tools: string[]
 }
+
+interface LocaleTool {
+  title?: string
+  description?: string
+  properties?: Record<string, string>
+}
+
+interface LocaleData {
+  scopes?: Record<string, { name: string; description: string }>
+  tools?: Record<string, LocaleTool>
+}
+
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+const allTools: Tool[] = (toolsData as any).tools
+const scopeDefs: ScopeDef[] = (toolsData as any).scopes ?? []
+const locales: Record<string, LocaleData> = (toolsData as any).locales ?? {}
+
+// tool name → scope def (for quick lookup)
+const toolScopeMap = new Map<string, ScopeDef>()
+for (const scope of scopeDefs) {
+  for (const toolName of scope.tools) {
+    toolScopeMap.set(toolName, scope)
+  }
+}
+
+// Stable color index per scope (based on position in array)
+const scopeColors = ['brand', 'green', 'yellow', 'red', 'indigo', 'purple']
+const scopeColorMap = new Map<string, string>()
+scopeDefs.forEach((s, i) => {
+  scopeColorMap.set(s.name, scopeColors[i % scopeColors.length])
+})
+
+// ── Locale helpers ────────────────────────────────────────────────────────────
+
+const { lang } = useData()
+
+const i18n = computed(() => {
+  switch (lang.value) {
+    case 'zh-CN':
+      return {
+        search: '搜索工具名称或描述...',
+        parameters: '参数',
+        required: '必填',
+        noParams: '无参数',
+        noMatch: (q: string) => `没有匹配 "${q}" 的工具`,
+      }
+    case 'zh-HK':
+      return {
+        search: '搜尋工具名稱或描述...',
+        parameters: '參數',
+        required: '必填',
+        noParams: '無參數',
+        noMatch: (q: string) => `沒有匹配 "${q}" 的工具`,
+      }
+    default:
+      return {
+        search: 'Search tools by name or description...',
+        parameters: 'Parameters',
+        required: 'Required',
+        noParams: 'No parameters',
+        noMatch: (q: string) => `No tools match "${q}"`,
+      }
+  }
+})
+
+function getLocaleTool(toolName: string): LocaleTool | undefined {
+  return locales[lang.value]?.tools?.[toolName]
+}
+
+function getTitle(tool: Tool): string {
+  return getLocaleTool(tool.name)?.title ?? tool.title ?? tool.name
+}
+
+function getDescription(tool: Tool): string {
+  return getLocaleTool(tool.name)?.description ?? tool.description
+}
+
+function getScopeLabel(tool: Tool): { label: string; color: string } | null {
+  const scope = toolScopeMap.get(tool.name)
+  if (!scope) return null
+  const localeScope = locales[lang.value]?.scopes?.[scope.name]
+  const label = localeScope?.name ?? scope.name
+  const color = scopeColorMap.get(scope.name) ?? 'brand'
+  return { label, color }
+}
+
+// ── Params ────────────────────────────────────────────────────────────────────
 
 interface ParamRow {
   name: string
@@ -40,10 +136,28 @@ interface ParamRow {
   description?: string
   enum?: string[]
   default?: unknown
-  format?: string
 }
 
-const allTools: Tool[] = (toolsData as ToolsPayload).tools
+function formatType(type: string | string[]): string {
+  return Array.isArray(type) ? type.join(' | ') : type
+}
+
+function getParams(tool: Tool): ParamRow[] {
+  const schema = tool.inputSchema
+  if (!schema?.properties) return []
+  const required = new Set(schema.required ?? [])
+  const localeProps = getLocaleTool(tool.name)?.properties ?? {}
+  return Object.entries(schema.properties).map(([name, def]) => ({
+    name,
+    type: formatType(def.type),
+    required: required.has(name),
+    description: localeProps[name] ?? def.description,
+    enum: def.enum,
+    default: def.default,
+  }))
+}
+
+// ── Search & accordion ────────────────────────────────────────────────────────
 
 const query = ref('')
 const openValue = ref<string>('')
@@ -52,9 +166,6 @@ const listRef = ref<HTMLElement | null>(null)
 watch(openValue, async (v) => {
   if (!v || !listRef.value) return
   await nextTick()
-  // Wait for accordion slide-down/up animation (~200ms) to settle
-  // before measuring — otherwise the previously open item still
-  // occupies its pre-collapse space and offsets are wrong.
   await new Promise((resolve) => setTimeout(resolve, 220))
   const container = listRef.value
   if (!container) return
@@ -76,30 +187,12 @@ watch(openValue, async (v) => {
 const filtered = computed<Tool[]>(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return allTools
-  return allTools.filter(
-    (t) =>
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q)
-  )
+  return allTools.filter((t) => {
+    const title = getTitle(t).toLowerCase()
+    const desc = getDescription(t).toLowerCase()
+    return t.name.toLowerCase().includes(q) || title.includes(q) || desc.includes(q)
+  })
 })
-
-function formatType(type: string | string[]): string {
-  return Array.isArray(type) ? type.join(' | ') : type
-}
-
-function getParams(schema?: ToolSchema): ParamRow[] {
-  if (!schema?.properties) return []
-  const required = new Set(schema.required ?? [])
-  return Object.entries(schema.properties).map(([name, def]) => ({
-    name,
-    type: formatType(def.type),
-    required: required.has(name),
-    description: def.description,
-    enum: def.enum,
-    default: def.default,
-    format: def.format,
-  }))
-}
 </script>
 
 <template>
@@ -126,7 +219,7 @@ function getParams(schema?: ToolSchema): ParamRow[] {
           v-model="query"
           type="text"
           class="mcp-tools-input"
-          placeholder="Search tools by name or description..."
+          :placeholder="i18n.search"
         />
         <button
           v-if="query"
@@ -154,71 +247,76 @@ function getParams(schema?: ToolSchema): ParamRow[] {
     </div>
 
     <div v-if="filtered.length === 0" class="mcp-tools-empty">
-      No tools match "{{ query }}"
+      {{ i18n.noMatch(query) }}
     </div>
 
     <div v-else ref="listRef" class="mcp-tools-list">
-    <Accordion v-model="openValue" type="single" collapsible>
-      <AccordionItem
-        v-for="tool in filtered"
-        :key="tool.name"
-        :value="tool.name"
-      >
-        <AccordionTrigger>
-          <span class="mcp-tool-title">
-            <svg
-              class="mcp-tool-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-            </svg>
-            <code class="mcp-tool-name">{{ tool.name }}</code>
-          </span>
-        </AccordionTrigger>
-        <AccordionContent>
-          <p class="mcp-tool-desc">{{ tool.description }}</p>
-
-          <p v-if="getParams(tool.inputSchema).length === 0" class="mcp-tool-no-params">
-            No parameters
-          </p>
-
-          <template v-else>
-            <h4 class="mcp-params-title">Parameters</h4>
-            <dl class="mcp-params">
-              <div
-                v-for="p in getParams(tool.inputSchema)"
-                :key="p.name"
-                class="mcp-param"
+      <Accordion v-model="openValue" type="single" collapsible>
+        <AccordionItem
+          v-for="tool in filtered"
+          :key="tool.name"
+          :value="tool.name"
+        >
+          <AccordionTrigger>
+            <span class="mcp-tool-trigger">
+              <svg
+                class="mcp-tool-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
               >
-                <dt class="mcp-param-head">
-                  <code class="mcp-param-name">{{ p.name }}</code>
-                  <span class="mcp-param-type">{{ p.type }}</span>
-                  <span v-if="p.required" class="mcp-param-required">Required</span>
-                </dt>
-                <dd class="mcp-param-body">
-                  <p v-if="p.description" class="mcp-param-desc">{{ p.description }}</p>
-                  <p v-if="p.enum" class="mcp-param-meta">
-                    Enum: {{ p.enum.map((e) => `"${e}"`).join(' | ') }}
-                  </p>
-                  <p v-if="p.default !== undefined" class="mcp-param-meta">
-                    Default: {{ p.default }}
-                  </p>
-                </dd>
-              </div>
-            </dl>
-          </template>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+              </svg>
+              <span class="mcp-tool-meta">
+                <span class="mcp-tool-title">{{ getTitle(tool) }}</span>
+                <span v-if="getScopeLabel(tool)" class="mcp-scope-label">
+                  {{ getScopeLabel(tool)!.label }}
+                </span>
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <p class="mcp-tool-desc">{{ getDescription(tool) }}</p>
+
+            <p v-if="getParams(tool).length === 0" class="mcp-tool-no-params">
+              {{ i18n.noParams }}
+            </p>
+
+            <template v-else>
+              <h4 class="mcp-params-title">{{ i18n.parameters }}</h4>
+              <dl class="mcp-params">
+                <div
+                  v-for="p in getParams(tool)"
+                  :key="p.name"
+                  class="mcp-param"
+                >
+                  <dt class="mcp-param-head">
+                    <code class="mcp-param-name">{{ p.name }}</code>
+                    <span class="mcp-param-type">{{ p.type }}</span>
+                    <span v-if="p.required" class="mcp-param-required">{{ i18n.required }}</span>
+                  </dt>
+                  <dd class="mcp-param-body">
+                    <p v-if="p.description" class="mcp-param-desc">{{ p.description }}</p>
+                    <p v-if="p.enum" class="mcp-param-meta">
+                      Enum: {{ p.enum.map((e) => `"${e}"`).join(' | ') }}
+                    </p>
+                    <p v-if="p.default !== undefined" class="mcp-param-meta">
+                      Default: {{ p.default }}
+                    </p>
+                  </dd>
+                </div>
+              </dl>
+            </template>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   </div>
 </template>
@@ -253,7 +351,6 @@ function getParams(schema?: ToolSchema): ParamRow[] {
   left: 0.75rem;
   color: var(--vp-c-text-3);
   pointer-events: none;
-  transition: color 0.15s ease;
 }
 
 .mcp-tools-input {
@@ -294,7 +391,6 @@ function getParams(schema?: ToolSchema): ParamRow[] {
   background: var(--vp-c-default-soft);
 }
 
-
 .mcp-tools-empty {
   padding: 1rem;
   text-align: center;
@@ -314,10 +410,12 @@ function getParams(schema?: ToolSchema): ParamRow[] {
   border-bottom: 0;
 }
 
-.mcp-tool-title {
+.mcp-tool-trigger {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .mcp-tool-icon {
@@ -329,19 +427,45 @@ function getParams(schema?: ToolSchema): ParamRow[] {
   color: var(--vp-c-brand-1);
 }
 
+.mcp-tool-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  flex: 1;
+  min-width: 0;
+}
+
+.mcp-tool-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--vp-c-text-1);
+  line-height: 1.3;
+}
+
 .mcp-tool-name {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-  font-size: 1rem;
-  color: var(--vp-c-text-1);
+  font-size: 0.72rem;
+  color: var(--vp-c-text-3);
   background: transparent;
   padding: 0;
 }
 
 .mcp-tools-list :deep(.mcp-accordion-trigger) {
-  padding: 0.5rem 0;
-  font-size: 1rem;
+  padding: 0.55rem 0;
 }
 
+/* Scope label */
+.mcp-scope-label {
+  margin-left: auto;
+  padding-right: 0.5rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: var(--vp-c-text-3);
+  white-space: nowrap;
+}
+
+
+/* Content */
 .mcp-tool-desc {
   margin: 0 0 0.5rem;
   color: var(--vp-c-text-2);
@@ -370,12 +494,8 @@ function getParams(schema?: ToolSchema): ParamRow[] {
 .mcp-param {
   padding: 0.3rem 0;
 }
-.mcp-param:first-child {
-  padding-top: 0;
-}
-.mcp-param:last-child {
-  padding-bottom: 0;
-}
+.mcp-param:first-child { padding-top: 0; }
+.mcp-param:last-child  { padding-bottom: 0; }
 
 .mcp-param-head {
   display: flex;
