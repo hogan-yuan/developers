@@ -6,18 +6,9 @@ import { LEVEL_COLORS } from './QuotePermissionData'
 const { lang } = useData()
 
 const showDialog = ref(false)
-const qrDataUrl = ref('')
 
-async function openDialog() {
+function openDialog() {
   showDialog.value = true
-  if (!qrDataUrl.value && typeof window !== 'undefined') {
-    const QRCode = await import('qrcode')
-    qrDataUrl.value = await QRCode.toDataURL('https://open.longbridge.com', {
-      width: 200,
-      margin: 2,
-      color: { dark: '#000000', light: '#ffffff' },
-    })
-  }
 }
 
 function closeDialog() {
@@ -194,10 +185,10 @@ const t = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-300 mx-auto px-8 pt-8 pb-16">
+  <div class="max-w-300 mx-auto px-4 sm:px-8 pt-8 pb-16">
     <!-- Hero -->
     <div class="text-center mb-12 pt-6">
-      <h1 class="text-[2.8rem]! font-bold! leading-tight! mb-4! border-none! p-0! mt-0!">
+      <h1 class="text-[1.8rem]! sm:text-[2.8rem]! font-bold! leading-tight! mb-4! border-none! p-0! mt-0!">
         {{ t.heroTitle }}
       </h1>
       <p class="text-[1.05rem] text-[var(--vp-c-text-2)] m-0 mx-auto leading-relaxed">
@@ -206,12 +197,12 @@ const t = computed(() => {
     </div>
 
     <!-- Free included -->
-    <div class="grid grid-cols-3 bg-[var(--vp-c-default-soft)] rounded-[14px] overflow-hidden mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 bg-[var(--vp-c-default-soft)] rounded-[14px] overflow-hidden mb-8">
       <div
         v-for="(item, i) in t.freeItems"
         :key="item.name"
         class="p-[18px_20px]"
-        :class="{ 'border-l-2 border-dashed border-[var(--vp-c-divider)]': i > 0 }">
+        :class="{ 'border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[var(--vp-c-divider)]': i > 0 }">
         <div class="flex items-center gap-1.5 mb-1.5">
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="none">
             <circle cx="10" cy="10" r="10" fill="#22c538" fill-opacity="0.18" />
@@ -238,7 +229,7 @@ const t = computed(() => {
         <button
           v-for="p in t.billingPeriods"
           :key="p.id"
-          class="relative px-3.5 py-1.5 min-w-28 rounded-md text-sm font-medium transition-all duration-150 cursor-pointer whitespace-nowrap"
+          class="relative px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm sm:min-w-28 rounded-md font-medium transition-all duration-150 cursor-pointer whitespace-nowrap"
           :class="
             billing === p.id
               ? 'bg-[var(--vp-c-bg)] shadow-sm text-[var(--vp-c-text-1)]'
@@ -294,7 +285,8 @@ const t = computed(() => {
         </div>
         <div class="flex items-baseline gap-[5px] flex-wrap mb-1">
           <span
-            class="text-[1.9rem] font-bold leading-none tracking-[-0.02em]" style="font-feature-settings:'tnum'"
+            class="text-[1.9rem] font-bold leading-none tracking-[-0.02em]"
+            style="font-feature-settings: 'tnum'"
             :style="{ color: LEVEL_COLORS.lv1.hex }"
             >HK${{ priceOf('us_lv1') }}</span
           >
@@ -365,7 +357,8 @@ const t = computed(() => {
         <div class="text-[0.68rem] text-[var(--vp-c-text-3)] mb-0.5">{{ t.hkLv2GlobalLabel }}</div>
         <div class="flex items-baseline gap-[5px] flex-wrap mb-1">
           <span
-            class="text-[1.9rem] font-bold leading-none tracking-[-0.02em]" style="font-feature-settings:'tnum'"
+            class="text-[1.9rem] font-bold leading-none tracking-[-0.02em]"
+            style="font-feature-settings: 'tnum'"
             :style="{ color: LEVEL_COLORS.lv2.hex }"
             >HK${{ priceOf('hk_lv2_global') }}</span
           >
@@ -445,7 +438,8 @@ const t = computed(() => {
         </div>
         <div class="flex items-baseline gap-[5px] flex-wrap mb-1">
           <span
-            class="text-[1.9rem] font-bold leading-none tracking-[-0.02em]" style="font-feature-settings:'tnum'"
+            class="text-[1.9rem] font-bold leading-none tracking-[-0.02em]"
+            style="font-feature-settings: 'tnum'"
             :style="{ color: LEVEL_COLORS.opra.hex }"
             >HK${{ priceOf('opra') }}</span
           >
@@ -561,9 +555,10 @@ const t = computed(() => {
           </svg>
         </button>
         <div class="text-base font-semibold text-[var(--vp-c-text-1)] text-center">{{ t.qrTitle }}</div>
-        <div class="w-[160px] h-[160px] rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center">
-          <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR Code" class="w-full h-full" />
-          <div v-else class="w-full h-full bg-[var(--vp-c-default-soft)] animate-pulse rounded-lg"></div>
+        <div class="rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center">
+          <img
+            class="w-56 h-56"
+            src="https://assets.lbctrl.com/uploads/01c3494f-7a78-4e69-a50f-c9ce5cd5a859/my-quotes.svg" />
         </div>
         <p class="text-sm text-[var(--vp-c-text-2)] text-center leading-relaxed m-0">{{ t.qrDesc }}</p>
       </div>
