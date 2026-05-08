@@ -18,15 +18,26 @@ description: 在 OpenClaw、Claude Code、Cursor、Codex 等 AI 工具中安裝 
 
 ## 第一步：安裝 Skill
 
-Skill 是一組指令文件，告訴 AI 助手 Longbridge 能做什麼。安裝方式有兩種：
+Skill 是一組指令文件，告訴 AI 助手 Longbridge 能做什麼。安裝方式有三種：
 
-**通過 npx / bunx（推薦，全局安裝）：**
+**通過 Claude Code 插件安裝（Claude Code 用戶推薦）：**
+
+在 Claude Code 中依次執行以下兩條命令：
+
+```text
+/plugin marketplace add longbridge/skills
+/plugin install longbridge@longbridge-skills
+```
+
+此方式透過 Claude Code 插件系統安裝全部 Longbridge Skill，並可自動保持最新版本。
+
+**通過 npx / bunx（全局安裝）：**
 
 ```bash
 # Node.js
-npx skills add longbridge/developers -g -y
+npx skills add longbridge/skills -g
 # Bun
-bunx skills add longbridge/developers -g -y
+bunx skills add longbridge/skills -g
 ```
 
 > 需要 [Node.js](https://nodejs.org) 或 [Bun](https://bun.sh) 環境。

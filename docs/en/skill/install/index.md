@@ -18,15 +18,26 @@ Once installed, you can say things like this to your AI assistant and get real a
 
 ## Step 1 — Install the Skill
 
-The Skill is a set of instruction files that tell your AI assistant what Longbridge can do. Two ways to install:
+The Skill is a set of instruction files that tell your AI assistant what Longbridge can do. Three ways to install:
 
-**Via npx / bunx (recommended, global install):**
+**Via Claude Code plugin (recommended for Claude Code users):**
+
+In Claude Code, run these two commands:
+
+```text
+/plugin marketplace add longbridge/skills
+/plugin install longbridge@longbridge-skills
+```
+
+This installs all Longbridge skills through the Claude Code plugin system and keeps them up to date automatically.
+
+**Via npx / bunx (global install):**
 
 ```bash
 # Node.js
-npx skills add longbridge/developers -g -y
+npx skills add longbridge/skills -g
 # Bun
-bunx skills add longbridge/developers -g -y
+bunx skills add longbridge/skills -g
 ```
 
 > Requires [Node.js](https://nodejs.org) or [Bun](https://bun.sh).
