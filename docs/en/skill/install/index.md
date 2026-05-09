@@ -24,9 +24,9 @@ The Skill is a set of instruction files that tell your AI assistant what Longbri
 
 ```bash
 # Node.js
-npx skills add longbridge/developers -g -y
+npx skills add longbridge/skills -g
 # Bun
-bunx skills add longbridge/developers -g -y
+bunx skills add longbridge/skills -g
 ```
 
 > Requires [Node.js](https://nodejs.org) or [Bun](https://bun.sh).

@@ -2227,8 +2227,8 @@ onUnmounted(() => {
 
 // ─── Copy button ──────────────────────────────────────────────────────────────
 
-const npxCommand = 'npx skills add longbridge/developers'
-const openclawCommand = '/skills add longbridge/developers'
+const npxCommand = 'npx skills add longbridge/skills -g'
+const openclawCommand = '/skills add longbridge/skills'
 import { siteHostname } from '../utils/region'
 const oneLinerCommand = computed(() =>
   isEN.value
