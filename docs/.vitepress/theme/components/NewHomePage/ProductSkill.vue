@@ -26,12 +26,12 @@ const agents = [
   },
 ]
 
-const SEMANTIC_TEXT = `Install Longbridge Skill following the guide:\nhttps://developers.longbridge.com/skill/install.md`
+const SEMANTIC_TEXT = `Install Longbridge Skill following the guide:\nhttps://open.longbridge.com/skill/install.md`
 
 const cliTabs = [
-  { label: 'bun', cmd: 'bunx skills add longbridge/developers -g -y' },
-  { label: 'npx', cmd: 'npx skills add longbridge/developers -g -y' },
-  { label: 'yarn', cmd: 'yarn dlx skills add longbridge/developers -g -y' },
+  { label: 'bun', cmd: 'bunx skills add longbridge/skills -g' },
+  { label: 'npx', cmd: 'npx skills add longbridge/skills -g' },
+  { label: 'yarn', cmd: 'yarn dlx skills add longbridge/skills -g' },
 ]
 const activeCliTab = ref(0)
 
@@ -160,7 +160,7 @@ function copyCli() {
       <div class="skill-install-ai-block">
         <div class="skill-install-ai-text">
           <span>Install Longbridge Skill following the guide:</span>
-          <span class="skill-install-ai-url">https://developers.longbridge.com/skill/install.md</span>
+          <span class="skill-install-ai-url">https://open.longbridge.com/skill/install.md</span>
         </div>
         <button class="skill-copy-btn" @click="copySemantic">
           <svg
